@@ -1,24 +1,14 @@
-"""
-Palletizer API Routes
-====================
-
-FastAPI routes for palletizer control.
-"""
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
 
+from palletizer.grid import calculate_place_positions
+
+
 router = APIRouter()
-
-
-# ============================================================================
-# Request/Response Models
-# ============================================================================
 
 class PalletConfig(BaseModel):
     """Configuration for palletizing operation."""
-    
     rows: int = Field(..., ge=1, le=10, description="Number of rows in the grid")
     cols: int = Field(..., ge=1, le=10, description="Number of columns in the grid")
     box_width_mm: float = Field(..., gt=0, description="Box width in mm (X direction)")
@@ -78,6 +68,15 @@ class ConfigResponse(BaseModel):
     message: str
     grid_size: Optional[str] = None
 
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "message": "Palletizer configured: 2x2 grid, 4 boxes",
+                "grid_size": "2x2",
+            }
+        }
+
 
 class CommandResponse(BaseModel):
     """Generic command response."""
@@ -98,7 +97,14 @@ async def configure_palletizer(config: PalletConfig):
     Sets up the grid dimensions, box size, and pallet origin.
     Can only be called when the palletizer is in IDLE state.
     """
-    raise HTTPException(status_code=501, detail="Not implemented")
+
+    _grid_points = calculate_place_positions(
+        config.rows,
+        config.cols,
+        (config.box_width_mm, config.box_depth_mm, config.box_height_mm),
+        (config.pallet_origin_x_mm, config.pallet_origin_y_mm, config.pallet_origin_z_mm)
+    )
+    return ConfigResponse(success=True, message=f"Palletizer configured: {config.rows}x{config.cols} grid, 4 boxes", grid_size=str(len(_grid_points)))
 
 
 @router.post("/start", response_model=CommandResponse)
