@@ -107,7 +107,15 @@ async def configure_palletizer(config: PalletConfig):
         (config.box_width_mm, config.box_depth_mm, config.box_height_mm),
         (config.pallet_origin_x_mm, config.pallet_origin_y_mm, config.pallet_origin_z_mm)
     )
-    return ConfigResponse(success=True, message=f"Palletizer configured: {config.rows}x{config.cols} grid, 4 boxes", grid_size=str(len(_grid_points)))
+
+
+    palletizer.configure(
+        config.rows,
+        config.cols,
+        (config.box_width_mm, config.box_depth_mm, config.box_height_mm),
+        (config.pallet_origin_x_mm, config.pallet_origin_y_mm, config.pallet_origin_z_mm)
+    )
+    return ConfigResponse(success=True, message=f"Palletizer configured: {config.rows}x{config.cols} grid, {config.rows*config.cols} boxes", grid_size=str(len(_grid_points)))
 
 
 @router.post("/start", response_model=CommandResponse)
@@ -117,7 +125,8 @@ async def start_palletizer():
     
     Begins the pick-and-place cycle. The palletizer must be configured first.
     """
-    palletizer.begin()
+    if not palletizer.begin():
+        return CommandResponse(success=False, message=f"Cannot start from state {palletizer.current_state.name}")
     return CommandResponse(success=True, message="start")
 
 
@@ -128,7 +137,8 @@ async def stop_palletizer():
     
     Gracefully stops the operation and returns to IDLE state.
     """
-    palletizer.stop()
+    if not palletizer.stop():
+        return CommandResponse(success=False, message=f"Cannot stop from state {palletizer.current_state.name}")
     return CommandResponse(success=True, message="stop")
 
 
@@ -138,7 +148,8 @@ async def reset_palletizer():
     Reset from FAULT state.
     Clears the fault and returns to IDLE state.
     """
-    palletizer.reset()
+    if not palletizer.reset():
+        return CommandResponse(success=False, message=f"Cannot reset from state {palletizer.current_state.name}")
     return CommandResponse(success=True, message="reset")
 
 
