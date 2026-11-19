@@ -28,4 +28,13 @@ def calculate_place_positions(
     Returns:
         List of (x, y, z) TCP target positions, ordered for row-by-row filling.
     """
-    raise NotImplementedError("calculate_place_positions")
+    res = []
+    box_tcp = box_size_mm[0]/2, box_size_mm[1]/2, box_size_mm[2]
+
+    for r in range(rows):
+        for c in range(cols):
+            x = pallet_origin_mm[0] + c * (box_size_mm[0] + spacing_mm) + box_tcp[0]
+            y = pallet_origin_mm[1] + r * (box_size_mm[1] + spacing_mm) + box_tcp[1]
+            z = pallet_origin_mm[2] + box_tcp[2]
+            res.append((float(x), float(y), float(z)))
+    return res

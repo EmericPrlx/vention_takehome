@@ -11,33 +11,6 @@ Build a backend service that coordinates a **Universal Robots (UR5e)** to pick i
 - [Resources](#resources)
 - [Submission](#submission)
 
-## Quick Start
-### Prerequisites
-- Docker Desktop running
-- ~4GB free disk space (for URSim image)
-> **Apple Silicon (M1/M2/M3) Note:** URSim is an x86 image that runs via emulation. You may see a platform warning — this is normal. The simulator will work but may be slower than on Intel machines.
-
-### 1. Launch the Environment
-```bash
-docker-compose up -d
-```
-This starts:
-
-| Service              | Access                         |
-|----------------------|--------------------------------|
-| URSim (PolyScope UI) | http://localhost:6080/vnc.html |
-| Backend API          | http://localhost:8000/docs     |
-
-### 2. Power On the Robot
-1. Open PolyScope at http://localhost:6080/vnc.html
-2. Click the red button in the bottom-left corner
-3. Click **ON** → **START** to enable the robot
-
-### 3. Verify Connection
-```bash
-curl http://localhost:8000/health
-```
-
 ## Technical Specifications
 ### Camera Mounting
 | Parameter                      | Value                            |

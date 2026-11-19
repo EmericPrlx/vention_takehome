@@ -1,11 +1,6 @@
 """Tests for PalletizerStateMachine. Run with: pytest tests/test_state_machine.py -v"""
 
-from palletizer.state_machine import (
-    PalletizerState,
-    PalletizerContext,
-    States,
-    TRANSITIONS,
-)
+from palletizer.state_machine import PalletizerState, PalletizerContext, States, TRANSITIONS
 from state_machine.core import StateMachine
 from state_machine.decorators import on_enter_state
 
