@@ -3,9 +3,12 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 from palletizer.grid import calculate_place_positions
+from palletizer.state_machine import PalletizerStateMachine, PalletizerState
+from transforms.coordinate import camera_to_robot
 
 
 router = APIRouter()
+palletizer = PalletizerStateMachine()
 
 class PalletConfig(BaseModel):
     """Configuration for palletizing operation."""
@@ -114,7 +117,8 @@ async def start_palletizer():
     
     Begins the pick-and-place cycle. The palletizer must be configured first.
     """
-    raise HTTPException(status_code=501, detail="Not implemented")
+    palletizer.begin()
+    return CommandResponse(success=True, message="start")
 
 
 @router.post("/stop", response_model=CommandResponse)
@@ -124,17 +128,18 @@ async def stop_palletizer():
     
     Gracefully stops the operation and returns to IDLE state.
     """
-    raise HTTPException(status_code=501, detail="Not implemented")
+    palletizer.stop()
+    return CommandResponse(success=True, message="stop")
 
 
 @router.post("/reset", response_model=CommandResponse)
 async def reset_palletizer():
     """
     Reset from FAULT state.
-    
     Clears the fault and returns to IDLE state.
     """
-    raise HTTPException(status_code=501, detail="Not implemented")
+    palletizer.reset()
+    return CommandResponse(success=True, message="reset")
 
 
 @router.get("/status", response_model=StatusResponse)
@@ -144,7 +149,7 @@ async def get_status():
     
     Returns the current state, progress, and any error messages.
     """
-    raise HTTPException(status_code=501, detail="Not implemented")
+    return StatusResponse(**palletizer.progress)
 
 
 @router.post("/vision/detect", response_model=CommandResponse)
@@ -158,7 +163,9 @@ async def simulate_vision_detection(detection: VisionDetection):
     The coordinates are in the camera frame and must be transformed
     to the robot frame before use.
     """
-    raise HTTPException(status_code=501, detail="Not implemented")
+    robot_point = camera_to_robot([detection.x_mm, detection.y_mm, detection.z_mm])
+    palletizer.context.pick_position = tuple(float(v) for v in robot_point)
+    return CommandResponse(success=True, message=f"Position={palletizer.context.pick_position}")
 
 
 # ============================================================================
@@ -172,7 +179,13 @@ async def get_calculated_positions():
     
     Useful for verifying grid calculations without running the full sequence.
     """
-    raise HTTPException(status_code=501, detail="Not implemented")
+    ctx = palletizer.context
+    positions = calculate_place_positions(ctx.rows, ctx.cols, ctx.box_size_mm, ctx.pallet_origin_mm)
+    return {
+        "rows": ctx.rows,
+        "cols": ctx.cols,
+        "positions_mm": [{"index": i, "x_mm": x, "y_mm": y, "z_mm": z} for i, (x, y, z) in enumerate(positions)],
+    }
 
 
 @router.post("/debug/transform")
@@ -183,4 +196,17 @@ async def test_transform(detection: VisionDetection):
     Transforms the input coordinates and returns both camera and robot frame values.
     Useful for verifying transformation math.
     """
-    raise HTTPException(status_code=501, detail="Not implemented")
+    x, y, z = camera_to_robot([detection.x_mm, detection.y_mm, detection.z_mm])
+    return {
+        "camera_frame": {
+            "x_mm": detection.x_mm,
+            "y_mm": detection.y_mm,
+            "z_mm": detection.z_mm,
+            "yaw_deg": detection.yaw_deg,
+        },
+        "robot_frame": {
+            "x_mm": float(x),
+            "y_mm": float(y),
+            "z_mm": float(z),
+        },
+    }

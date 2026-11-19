@@ -10,15 +10,48 @@ Refer to the README for camera mounting specifications.
 import numpy as np
 
 
+
+CAM_POS = np.array([500.0, 300.0, 800.0])
+CAM_ROT = (15.0, -10.0, 45.0)
+
+def camera_to_robot(point_camera: np.ndarray) -> np.ndarray:
+    """
+    Transform a point from camera frame to robot base frame.
+    Args:
+        point_camera: [x, y, z] coordinates in camera frame (mm)
+    Returns:
+        [x, y, z] coordinates in robot base frame (mm)
+    """
+    p = np.asarray(point_camera).reshape(-1)
+    rotm = build_rotation_matrix(*np.radians(CAM_ROT))
+    mat4 = build_homogeneous_transform(rotm, CAM_POS)
+    return (mat4 @ np.append(p, 1.0))[:3]
+
+
+def robot_to_camera(point_robot: np.ndarray) -> np.ndarray:
+    """
+    Transform a point from robot base frame to camera frame.
+    Args:
+        point_robot: [x, y, z] coordinates in robot base frame (mm)
+    Returns:
+        [x, y, z] coordinates in camera frame (mm)
+    """
+    p = np.asarray(point_robot).reshape(-1)
+    rotm = build_rotation_matrix(*np.radians(CAM_ROT))
+    mat4 = build_homogeneous_transform(rotm.T, -rotm.T @ CAM_POS)
+    return (mat4 @ np.append(p, 1.0))[:3]
+
+
+
 def build_rotation_matrix(roll: float, pitch: float, yaw: float) -> np.ndarray:
     """
     Build a 3x3 rotation matrix from Roll-Pitch-Yaw (Euler) angles.
-    
+
     Args:
         roll: Rotation about X-axis in radians
         pitch: Rotation about Y-axis in radians
         yaw: Rotation about Z-axis in radians
-    
+
     Returns:
         3x3 rotation matrix
 
@@ -48,32 +81,6 @@ def build_rotation_matrix(roll: float, pitch: float, yaw: float) -> np.ndarray:
     ])
 
     return rz @ ry @ rx
-
-
-def camera_to_robot(point_camera: np.ndarray) -> np.ndarray:
-    """
-    Transform a point from camera frame to robot base frame.
-    
-    Args:
-        point_camera: [x, y, z] coordinates in camera frame (mm)
-    
-    Returns:
-        [x, y, z] coordinates in robot base frame (mm)
-    """
-    raise NotImplementedError("camera_to_robot")
-
-
-def robot_to_camera(point_robot: np.ndarray) -> np.ndarray:
-    """
-    Transform a point from robot base frame to camera frame.
-    
-    Args:
-        point_robot: [x, y, z] coordinates in robot base frame (mm)
-    
-    Returns:
-        [x, y, z] coordinates in camera frame (mm)
-    """
-    raise NotImplementedError("robot_to_camera")
 
 
 def build_homogeneous_transform(
