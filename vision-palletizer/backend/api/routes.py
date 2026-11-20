@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from palletizer.grid import calculate_place_positions
 from palletizer.state_machine import PalletizerStateMachine, PalletizerState
 from transforms.coordinate import camera_to_robot
 
@@ -25,7 +24,8 @@ class PalletConfig(BaseModel):
     pallet_origin_x_mm: float = Field(..., description="Pallet origin X in mm")
     pallet_origin_y_mm: float = Field(..., description="Pallet origin Y in mm")
     pallet_origin_z_mm: float = Field(..., description="Pallet origin Z in mm")
-    
+    spacing_mm: float = Field(10.0, ge=0, description="Gap between adjacent boxes in mm")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -37,6 +37,7 @@ class PalletConfig(BaseModel):
                 "pallet_origin_x_mm": 400.0,
                 "pallet_origin_y_mm": -200.0,
                 "pallet_origin_z_mm": 100.0,
+                "spacing_mm": 10.0,
             }
         }
 
@@ -108,14 +109,21 @@ async def configure_palletizer(
     Sets up the grid dimensions, box size, and pallet origin.
     Can only be called when the palletizer is in IDLE state.
     """
-    palletizer.configure(
+    configured = palletizer.configure(
         config.rows,
         config.cols,
         (config.box_width_mm, config.box_depth_mm, config.box_height_mm),
-        (config.pallet_origin_x_mm, config.pallet_origin_y_mm, config.pallet_origin_z_mm)
+        (config.pallet_origin_x_mm, config.pallet_origin_y_mm, config.pallet_origin_z_mm),
+        config.spacing_mm,
     )
-    glen = config.rows*config.cols
-    return ConfigResponse(success=True, message=f"Palletizer configured: {config.rows}x{config.cols} grid, {glen} boxes", grid_size=str(glen))
+    if not configured:
+        return ConfigResponse(success=False, message=f"Cannot configure from state {palletizer.current_state.name}")
+    grid_size = f"{config.rows}x{config.cols}"
+    return ConfigResponse(
+        success=True,
+        message=f"Palletizer configured: {grid_size} grid, {palletizer.context.total_boxes} boxes",
+        grid_size=grid_size,
+    )
 
 
 @router.post("/start", response_model=CommandResponse)
@@ -126,7 +134,7 @@ async def start_palletizer(palletizer: PalletizerStateMachine = Depends(get_pall
     Begins the pick-and-place cycle. The palletizer must be configured first.
     """
     if not palletizer.begin():
-        return CommandResponse(success=False, message=f"Cannot start from state {palletizer.current_state.name}")
+        return CommandResponse(success=False, message=f"Cannot start: {palletizer.start_blocker or 'start transition failed'}")
     return CommandResponse(success=True, message="start")
 
 
@@ -177,9 +185,12 @@ async def simulate_vision_detection(
     The coordinates are in the camera frame and must be transformed
     to the robot frame before use.
     """
-    robot_point = camera_to_robot([detection.x_mm, detection.y_mm, detection.z_mm])
-    palletizer.context.pick_position = tuple(float(v) for v in robot_point)
-    return CommandResponse(success=True, message=f"Position={palletizer.context.pick_position}")
+    palletizer.context.detections.append(detection.model_dump())
+    robot_point = tuple(round(float(v), 3) for v in camera_to_robot([detection.x_mm, detection.y_mm, detection.z_mm]))
+    return CommandResponse(
+        success=True,
+        message=f"Detection queued ({len(palletizer.context.detections)} pending), robot frame position (mm) = {robot_point}",
+    )
 
 
 # ============================================================================
@@ -194,11 +205,11 @@ async def get_calculated_positions(palletizer: PalletizerStateMachine = Depends(
     Useful for verifying grid calculations without running the full sequence.
     """
     ctx = palletizer.context
-    positions = calculate_place_positions(ctx.rows, ctx.cols, ctx.box_size_mm, ctx.pallet_origin_mm)
     return {
         "rows": ctx.rows,
         "cols": ctx.cols,
-        "positions_mm": [{"index": i, "x_mm": x, "y_mm": y, "z_mm": z} for i, (x, y, z) in enumerate(positions)],
+        "spacing_mm": ctx.spacing_mm,
+        "positions_mm": [{"index": i, "x_mm": x, "y_mm": y, "z_mm": z} for i, (x, y, z) in enumerate(ctx.place_positions)],
     }
 
 

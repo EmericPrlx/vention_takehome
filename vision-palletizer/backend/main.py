@@ -13,6 +13,8 @@ from palletizer.state_machine import PalletizerStateMachine
 from api.routes import router as palletizer_router
 
 
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -31,8 +33,8 @@ async def lifespan(app: FastAPI):
         print("⚠ Robot not available yet - will auto-reconnect when robot is powered on")
         print("  → Power on the robot in PolyScope, then call /health to connect")
 
-    app.state.robot_connection = robot_connection
-    app.state.palletizer = PalletizerStateMachine()
+    # app.state.robot_connection = robot_connection
+    app.state.palletizer = PalletizerStateMachine(robot_connection)
 
     yield
 
@@ -62,11 +64,8 @@ async def health_check(request: Request):
     so you can use it to verify when the robot becomes available after
     powering it on in PolyScope.
     """
-    robot_connection: RobotConnection = request.app.state.robot_connection
-
-    # This will attempt to reconnect if not connected
+    robot_connection: RobotConnection = request.app.state.palletizer.motion.connection
     robot_status = "connected" if robot_connection.check_and_reconnect() else "disconnected"
-
     return {
         "status": "healthy",
         "robot": robot_status,

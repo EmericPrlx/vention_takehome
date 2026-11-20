@@ -20,6 +20,11 @@ def deg2rad(angles_deg: list[float]) -> list[float]:
     return [float(np.radians(a)) for a in angles_deg]
 
 
+def mm2m(values_mm) -> list[float]:
+    """Convert a list of lengths from millimeters to meters."""
+    return [float(v) / 1000.0 for v in values_mm]
+
+
 class MotionController:
     """
     Controls robot motion for palletizing operations.
@@ -115,7 +120,7 @@ class MotionController:
             pose.extend(orientation)
 
         pose_offset = [p for p in pose]
-        pose_offset[2] += 200
+        pose_offset[2] += self.APPROACH_HEIGHT_OFFSET
 
         if not self._move_linear(pose_offset):
             return False
@@ -171,9 +176,17 @@ class MotionController:
             return True
 
         # Real
-        if not self.connection.control.isPoseWithinSafetyLimits(pose):
+        control = self.connection.control
+        if control is None:
+            print("[MOTION] moveL skipped: robot not connected")
             return False
-        return self.connection.control.moveL(pose, velocity, acceleration)
+        if not control.isPoseWithinSafetyLimits(pose):
+            print(f"[MOTION] moveL target outside safety limits: {pose}")
+            return False
+        if not control.moveL(pose, velocity, acceleration):
+            print(f"[MOTION] moveL failed: {pose}")
+            return False
+        return True
     
     def _move_joint(
         self,
@@ -197,9 +210,17 @@ class MotionController:
             return True
 
         # Real
-        if not self.connection.control.isJointsWithinSafetyLimits(joints):
+        control = self.connection.control
+        if control is None:
+            print("[MOTION] moveJ skipped: robot not connected")
             return False
-        return self.connection.control.moveJ(joints, velocity, acceleration)
+        if not control.isJointsWithinSafetyLimits(joints):
+            print(f"[MOTION] moveJ target outside safety limits: {joints}")
+            return False
+        if not control.moveJ(joints, velocity, acceleration):
+            print(f"[MOTION] moveJ failed: {joints}")
+            return False
+        return True
     
     def get_default_orientation(self) -> list[float]:
         """
