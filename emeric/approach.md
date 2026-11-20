@@ -20,3 +20,4 @@ Kept the template layout, even if the single-file packages looked odd to me at f
 # Other
 - LLMs were allowed, but I tried to keep their use to a minimum, which probably gave me more work than needed. I used one mostly for code reviews, plus a few pieces: the rotation and homogeneous transform helpers, the route dependency wiring and some API response handling. Near the end, short on time, I let it do a correction pass on the state machine (background execution, unit conversion, fault/stop/reset handling). The conversation is in ref/transcript_llm.md.
 - Not done: Bonus 11, 13; 12 only goes as far as ur_rtde's safety-limit checks.
+- I changed the camera points in the video so it would actually do something interesting, they were not within the valid space I had assumed.

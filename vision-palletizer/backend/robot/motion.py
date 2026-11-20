@@ -5,6 +5,7 @@ Motion Controller
 Implements robot motion commands for pick and place operations.
 """
 
+import time
 from typing import Optional
 import numpy as np
 
@@ -12,7 +13,7 @@ from .connection import RobotConnection
 
 
 # Home joint positions in degrees (as displayed in PolyScope)
-POSJ_HOME = [0.0, -90.0, 45.0, -45.0, -90., 0.0]
+POSJ_HOME = [0.0, -45.0, -90.0, -135.0, 90., 0.0]
 
 
 def deg2rad(angles_deg: list[float]) -> list[float]:
@@ -48,7 +49,14 @@ class MotionController:
         """
         self.connection = connection
         self._gripper_closed = False
-    
+
+    def _control(self):
+        control = self.connection.control
+        if not control.isProgramRunning():
+            control.reuploadScript()
+            while not control.isProgramRunning(): time.sleep(0.05)
+        return control
+
     def move_to_home(self) -> bool:
         """
         Move robot to home/safe position.
@@ -176,7 +184,7 @@ class MotionController:
             return True
 
         # Real
-        control = self.connection.control
+        control = self._control()
         if control is None:
             print("[MOTION] moveL skipped: robot not connected")
             return False
@@ -210,7 +218,7 @@ class MotionController:
             return True
 
         # Real
-        control = self.connection.control
+        control = self._control()
         if control is None:
             print("[MOTION] moveJ skipped: robot not connected")
             return False
