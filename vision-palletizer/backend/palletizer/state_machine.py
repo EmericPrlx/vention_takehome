@@ -13,7 +13,7 @@ from state_machine.core import StateMachine, BaseTriggers
 from state_machine.defs import StateGroup, State, Trigger
 from state_machine.decorators import on_enter_state, on_state_change
 
-from grid import calculate_place_positions
+from .grid import calculate_place_positions
 
 class PalletizerState(Enum):
     """Palletizer operation states."""

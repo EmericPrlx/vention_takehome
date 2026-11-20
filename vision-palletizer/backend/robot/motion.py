@@ -11,7 +11,13 @@ import numpy as np
 from .connection import RobotConnection
 
 
+# Home joint positions in degrees (as displayed in PolyScope)
 POSJ_HOME = [0.0, -90.0, 45.0, -45.0, -90., 0.0]
+
+
+def deg2rad(angles_deg: list[float]) -> list[float]:
+    """Convert a list of angles from degrees to radians."""
+    return [float(np.radians(a)) for a in angles_deg]
 
 
 class MotionController:
@@ -45,7 +51,7 @@ class MotionController:
         Returns:
             True if move completed successfully.
         """
-        return self._move_joint(POSJ_HOME)
+        return self._move_joint(deg2rad(POSJ_HOME))
 
 
     def move_to_pick(
@@ -72,7 +78,7 @@ class MotionController:
             pose.extend(orientation)
 
         pose_offset = [p for p in pose]
-        pose_offset[2] += 200
+        pose_offset[2] += self.APPROACH_HEIGHT_OFFSET
 
         if not self.open_gripper():
             return False
@@ -167,11 +173,7 @@ class MotionController:
         # Real
         if not self.connection.control.isPoseWithinSafetyLimits(pose):
             return False
-        try:
-            self.connection.control.moveL(pose)
-            return True
-        except ...:
-            return False
+        return self.connection.control.moveL(pose, velocity, acceleration)
     
     def _move_joint(
         self,
@@ -197,11 +199,7 @@ class MotionController:
         # Real
         if not self.connection.control.isJointsWithinSafetyLimits(joints):
             return False
-        try:
-            self.connection.control.moveJ(joints)
-            return True
-        except ...:
-            return False
+        return self.connection.control.moveJ(joints, velocity, acceleration)
     
     def get_default_orientation(self) -> list[float]:
         """

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -8,7 +8,12 @@ from transforms.coordinate import camera_to_robot
 
 
 router = APIRouter()
-palletizer = PalletizerStateMachine()
+
+
+def get_palletizer(request: Request) -> PalletizerStateMachine:
+    """Dependency: return the state machine created in main.lifespan."""
+    return request.app.state.palletizer
+
 
 class PalletConfig(BaseModel):
     """Configuration for palletizing operation."""
@@ -93,7 +98,10 @@ class CommandResponse(BaseModel):
 # ============================================================================
 
 @router.post("/configure", response_model=ConfigResponse)
-async def configure_palletizer(config: PalletConfig):
+async def configure_palletizer(
+    config: PalletConfig,
+    palletizer: PalletizerStateMachine = Depends(get_palletizer),
+):
     """
     Configure the palletizing operation.
     
@@ -111,7 +119,7 @@ async def configure_palletizer(config: PalletConfig):
 
 
 @router.post("/start", response_model=CommandResponse)
-async def start_palletizer():
+async def start_palletizer(palletizer: PalletizerStateMachine = Depends(get_palletizer)):
     """
     Start the palletizing sequence.
     
@@ -123,7 +131,7 @@ async def start_palletizer():
 
 
 @router.post("/stop", response_model=CommandResponse)
-async def stop_palletizer():
+async def stop_palletizer(palletizer: PalletizerStateMachine = Depends(get_palletizer)):
     """
     Stop the palletizing sequence.
     
@@ -135,7 +143,7 @@ async def stop_palletizer():
 
 
 @router.post("/reset", response_model=CommandResponse)
-async def reset_palletizer():
+async def reset_palletizer(palletizer: PalletizerStateMachine = Depends(get_palletizer)):
     """
     Reset from FAULT state.
     Clears the fault and returns to IDLE state.
@@ -146,7 +154,7 @@ async def reset_palletizer():
 
 
 @router.get("/status", response_model=StatusResponse)
-async def get_status():
+async def get_status(palletizer: PalletizerStateMachine = Depends(get_palletizer)):
     """
     Get current palletizer status.
     
@@ -156,7 +164,10 @@ async def get_status():
 
 
 @router.post("/vision/detect", response_model=CommandResponse)
-async def simulate_vision_detection(detection: VisionDetection):
+async def simulate_vision_detection(
+    detection: VisionDetection,
+    palletizer: PalletizerStateMachine = Depends(get_palletizer),
+):
     """
     Simulate a vision detection event.
     
@@ -176,7 +187,7 @@ async def simulate_vision_detection(detection: VisionDetection):
 # ============================================================================
 
 @router.get("/debug/positions")
-async def get_calculated_positions():
+async def get_calculated_positions(palletizer: PalletizerStateMachine = Depends(get_palletizer)):
     """
     Debug endpoint: Get all calculated place positions.
     
