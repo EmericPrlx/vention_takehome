@@ -13,6 +13,7 @@ from state_machine.core import StateMachine, BaseTriggers
 from state_machine.defs import StateGroup, State, Trigger
 from state_machine.decorators import on_enter_state, on_state_change
 
+from grid import calculate_place_positions
 
 class PalletizerState(Enum):
     """Palletizer operation states."""
@@ -126,7 +127,10 @@ class PalletizerStateMachine(StateMachine):
         self.context.pallet_origin_mm = pallet_origin_mm
         self.context.total_boxes = rows * cols
         self.context.current_box_index = 0
-        self.context.place_positions = []
+        # self.context.place_positions = []
+        self.context.place_positions = calculate_place_positions(
+            rows, cols, box_size_mm, pallet_origin_mm
+        )
         return True
     
     def begin(self) -> bool:

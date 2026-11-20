@@ -11,6 +11,9 @@ import numpy as np
 from .connection import RobotConnection
 
 
+POSJ_HOME = [0.0, -90.0, 45.0, -45.0, -90., 0.0]
+
+
 class MotionController:
     """
     Controls robot motion for palletizing operations.
@@ -42,8 +45,9 @@ class MotionController:
         Returns:
             True if move completed successfully.
         """
-        raise NotImplementedError("move_to_home")
-    
+        return self._move_joint(POSJ_HOME)
+
+
     def move_to_pick(
         self,
         position: list[float],
@@ -60,7 +64,27 @@ class MotionController:
         Returns:
             True if pick completed successfully.
         """
-        raise NotImplementedError("move_to_pick")
+
+        pose = [p for p in position]
+        if orientation is None:
+            pose.extend(self.get_default_orientation())
+        else:
+            pose.extend(orientation)
+
+        pose_offset = [p for p in pose]
+        pose_offset[2] += 200
+
+        if not self.open_gripper():
+            return False
+        if not self._move_linear(pose_offset):
+            return False
+        if not self._move_linear(pose):
+            return False
+        if not self.close_gripper():
+            return False
+        if not self._move_linear(pose_offset):
+            return False
+        return True
     
     def move_to_place(
         self,
@@ -78,7 +102,24 @@ class MotionController:
         Returns:
             True if place completed successfully.
         """
-        raise NotImplementedError("move_to_place")
+        pose = [p for p in position]
+        if orientation is None:
+            pose.extend(self.get_default_orientation())
+        else:
+            pose.extend(orientation)
+
+        pose_offset = [p for p in pose]
+        pose_offset[2] += 200
+
+        if not self._move_linear(pose_offset):
+            return False
+        if not self._move_linear(pose):
+            return False
+        if not self.open_gripper():
+            return False
+        if not self._move_linear(pose_offset):
+            return False
+        return True
     
     def open_gripper(self) -> bool:
         """
@@ -122,8 +163,15 @@ class MotionController:
         if self.connection.is_mock_mode():
             print(f"[MOCK] moveL to {pose[:3]}")
             return True
-        
-        raise NotImplementedError("_move_linear")
+
+        # Real
+        if not self.connection.control.isPoseWithinSafetyLimits(pose):
+            return False
+        try:
+            self.connection.control.moveL(pose)
+            return True
+        except ...:
+            return False
     
     def _move_joint(
         self,
@@ -145,8 +193,15 @@ class MotionController:
         if self.connection.is_mock_mode():
             print(f"[MOCK] moveJ to {joints}")
             return True
-        
-        raise NotImplementedError("_move_joint")
+
+        # Real
+        if not self.connection.control.isJointsWithinSafetyLimits(joints):
+            return False
+        try:
+            self.connection.control.moveJ(joints)
+            return True
+        except ...:
+            return False
     
     def get_default_orientation(self) -> list[float]:
         """

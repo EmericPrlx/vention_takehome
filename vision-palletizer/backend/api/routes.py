@@ -100,22 +100,14 @@ async def configure_palletizer(config: PalletConfig):
     Sets up the grid dimensions, box size, and pallet origin.
     Can only be called when the palletizer is in IDLE state.
     """
-
-    _grid_points = calculate_place_positions(
-        config.rows,
-        config.cols,
-        (config.box_width_mm, config.box_depth_mm, config.box_height_mm),
-        (config.pallet_origin_x_mm, config.pallet_origin_y_mm, config.pallet_origin_z_mm)
-    )
-
-
     palletizer.configure(
         config.rows,
         config.cols,
         (config.box_width_mm, config.box_depth_mm, config.box_height_mm),
         (config.pallet_origin_x_mm, config.pallet_origin_y_mm, config.pallet_origin_z_mm)
     )
-    return ConfigResponse(success=True, message=f"Palletizer configured: {config.rows}x{config.cols} grid, {config.rows*config.cols} boxes", grid_size=str(len(_grid_points)))
+    glen = config.rows*config.cols
+    return ConfigResponse(success=True, message=f"Palletizer configured: {config.rows}x{config.cols} grid, {glen} boxes", grid_size=str(glen))
 
 
 @router.post("/start", response_model=CommandResponse)

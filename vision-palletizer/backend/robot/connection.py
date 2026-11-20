@@ -38,11 +38,7 @@ class RobotConnection:
     # Minimum time between reconnection attempts (seconds)
     RECONNECT_INTERVAL = 2.0
     
-    def __init__(
-        self,
-        host: Optional[str] = None,
-        port: int = 30004,
-    ):
+    def __init__(self, host: Optional[str] = None, port: int = 30004):
         """
         Initialize robot connection.
         
